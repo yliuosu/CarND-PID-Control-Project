@@ -36,12 +36,12 @@ void PID::UpdateError(double cte) {
 	p_error = cte;
 	i_error += cte;
 	prev_ct = cte;
+	total_cte += cte * cte;
 	
 }
 
 double PID::TotalError() {
 	
-	
-	return 
+	return  total_cte;
 }
 
