@@ -19,7 +19,21 @@ public:
   
   double prev_cte;
   double total_cte;
+  
+   int msgcount;
+   
+   float best_error;
+   
+   float dp[3];
+   
+   bool better;
+   
+   // 0  dp_p;
+   // 1  dp_i;
+   // 2  dp_d;
 
+   int adjust_index;
+   
   /*
   * Constructor
   */
@@ -44,6 +58,11 @@ public:
   * Calculate the total PID error.
   */
   double TotalError();
+  
+  void MulitpleDP(float factor);
+  
+  void ADDP();
+  
 };
 
 #endif /* PID_H */
