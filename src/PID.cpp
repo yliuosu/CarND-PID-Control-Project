@@ -1,6 +1,8 @@
 #include "PID.h"
+#include <assert.h> 
 
 using namespace std;
+
 
 /*
 * TODO: Complete the PID class.
@@ -18,15 +20,15 @@ PID::PID() {
 	
 	prev_cte = 0.0;
 	
-	best_error = 100000;
+	best_error = 0.0;
 	
-	dp[0] = 0.2;
-	dp[1] = 0.2;
-	dp[2] = 0.2;
+	dp[0] = 1;
+	dp[1] = 1;
+	dp[2] = 1;
 	
 	adjust_index = 0;
 	
-	better = false;
+	first_run = true;
 	
 }
 
@@ -57,30 +59,54 @@ void PID::UpdateError(double cte) {
 }
 
 double PID::TotalError() {
-	adjust_index = (adjust_index + 1) % 3;
 	return  total_cte;
 }
 
-void PID::MulitpleDP(float factor){
-	dp[adjust_index] *= facot;
+void PID::SetAdjustIndex(int index) {
+	assert(0 <= index && index <= 2);
+	adjust_index = index;
 }
 
-void PID::ADDP() {
+void PID::MulitpleDP(float factor){
+	dp[adjust_index] *= factor;
+}
+
+int PID::CheckOperations() {
+	
+	if(stack_operations.top() == First_AddDP) {
+		return 1;
+	}
+	
+	if(stack_operations.top() == Second_Minus2DP){
+		return -2;
+	}
+	
+	if(stack_operations.top() == Third_AddDP){
+		return 1;
+	}
+	
+}
+
+void PID::AdjustParams() {
+	
 	switch(adjust_index) {
 		case 0:
-			Kp += dp[0]
+			Kp += dp[adjust_index] * CheckOperations();
 		break;
 		case 1:
-			Ki += dp[1];
+			Ki += dp[adjust_index] * CheckOperations();
 		break;
 		case 2:
-			Kd += dp[2];
+			Kd += dp[adjust_index] * CheckOperations();
 		break;
 	}
+	
+	total_cte = 0.0;
+	
 }
 
-bool  PID::DPThreshold(total){
-	if(dp_P + dp_i + dp_e > total)
+bool  PID::DPThreshold(float total){
+	if(dp[0] + dp[1] + dp[2] > total)
 		return false;
 	else 
 		return true;

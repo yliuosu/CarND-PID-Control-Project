@@ -4,6 +4,7 @@
 #include "PID.h"
 #include <math.h>
 
+
 // for convenience
 using json = nlohmann::json;
 
@@ -34,7 +35,9 @@ int main()
 
   PID pid;
   // TODO: Initialize the pid variable.
-
+  
+  pid.Init(0.1,0.0,3.0);
+  
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -57,15 +60,122 @@ int main()
           * NOTE: Feel free to play around with the throttle and speed. Maybe use
           * another PID controller to control the speed!
           */
+		  pid.UpdateError(cte);
+		  
+		  steer_value = -1.0 * (pid.p_error * pid.Kp  +  pid.i_error * pid.Ki + pid.d_error * pid.Kd);
           
-          // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          // DEBUG	
+          /*std::cout << "CTE: " << cte << " Steering Value: " << steer_value << " Angle: " <<
+							angle  << "Speed:"<< speed << "Count:" << pid.msgcount <<std::endl;*/
+		std::cout << "CTE: " << cte << ",   Count:" << pid.msgcount << " [ " << pid.Kp << ", " << pid.Ki << ", " << pid.Kd << " ] "<< pid. TotalError()   <<std::endl;
+		  
+          // calculate 2100 steps of total errors to twiddle the parameters		  
+		   if (pid.msgcount >= 300 ) {
+			   
+			   if(pid.first_run == true) {
+				   
+				   std::cout << "First run Best error: ***************" << pid.best_error  << " ****************" << pid.TotalError() << std::endl;
+				   std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
+				   
+				   pid.best_error = pid.TotalError();
+				   pid.first_run = false;
+				   //adjust the first parameters
+				   pid.SetAdjustIndex(0);
+				   pid.stack_operations.push(First_AddDP);
+				   pid.AdjustParams();
+				   
+				   std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
+	
+			   } else {
+				   
+				   // the first adjustment is good then adjust the next parameter
+				   if(pid. TotalError() < pid.best_error && pid.stack_operations.top() == First_AddDP ) {
+					   
+					   std::cout << "First_AddDP is good Best error: ***************" << pid.best_error  << " ****************" << pid.TotalError() << std::endl;
+					   std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
+					   
+						pid.MulitpleDP(1.1);
+						pid.best_error = pid. TotalError();
+						
+						
+						// select next parameter
+						pid.adjust_index = (pid.adjust_index + 1) % 3;
+						// adjust it parameter
+						pid.AdjustParams();
+						
+						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
+						
+					} else if(pid.best_error < pid. TotalError() && pid.stack_operations.top() == First_AddDP ) {
+						
+						std::cout << "First_AddDP is not good  Best error: ***************" << pid.best_error  << " ****************" << pid.TotalError() << std::endl;
+						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
+						
+						// the first adjustment is not good, keep tuning the parameter
+						// remove the previous operation from the stack
+						pid.stack_operations.pop();
+						pid.stack_operations.push(Second_Minus2DP);
+						pid.AdjustParams();
+						
+						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
+						
+						
+						
+					} else if(pid. TotalError() < pid.best_error  && pid.stack_operations.top() == Second_Minus2DP ) {
+						// the second adjustment is good then adjust the next parameter
+						// remove the previous operation from the stack
+						
+						std::cout << "Second_Minus2DP is good  Best error: ***************" << pid.best_error  << " ****************" <<std::endl;
+						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
+						
+						pid.MulitpleDP(1.1);
+						pid.best_error = pid. TotalError();	
+						
+					
+						// select next parameter
+						pid.adjust_index = (pid.adjust_index + 1) % 3;
+						pid.stack_operations.pop();
+						pid.stack_operations.push(First_AddDP);
+						// adjust it parameter
+						pid.AdjustParams();
+						
+						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
+					} else if(pid.best_error < pid. TotalError() && pid.stack_operations.top() == Second_Minus2DP ) {
+						
+						std::cout << "Second_Minus2DP is not good  Best error: ***************" << pid.best_error  << " ****************" <<std::endl;
+						
+						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
+						
+						// the second adjustment is not good then reduce the range of the adjustment
+						pid.stack_operations.pop();
+						pid.stack_operations.push(Third_AddDP);
+						pid.AdjustParams();
+						pid.MulitpleDP(0.9);
+						
+						// select next parameter
+						pid.adjust_index = (pid.adjust_index + 1) % 3;
+						pid.stack_operations.pop();
+						pid.stack_operations.push(First_AddDP);
+						// adjust it parameter
+						pid.AdjustParams();
+						
+						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
+						
+						
+					}
+			   }
+			   std::cout << "t***************reset*******************************************************" <<std::endl;; 
+				
+			    pid.msgcount =0;
+				// reset the program to start a new round
+			   std::string msg = "42[\"reset\",{}]";
+				ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);  
+		   }
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = 0.3;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          //std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
@@ -75,6 +185,7 @@ int main()
       }
     }
   });
+  
 
   // We don't need this since we're not using HTTP but if it's removed the program
   // doesn't compile :-(

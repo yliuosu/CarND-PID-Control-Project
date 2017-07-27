@@ -1,6 +1,11 @@
 #ifndef PID_H
 #define PID_H
 
+#include <stack>
+
+
+enum Operations {First_AddDP, Second_Minus2DP, Third_AddDP} ;
+
 class PID {
 public:
   /*
@@ -22,17 +27,17 @@ public:
   
    int msgcount;
    
+   bool first_run;
    float best_error;
    
-   float dp[3];
+   std::stack<Operations> stack_operations;
    
-   bool better;
-   
+   // which parameter to adjust
    // 0  dp_p;
    // 1  dp_i;
    // 2  dp_d;
-
    int adjust_index;
+   float dp[3];
    
   /*
   * Constructor
@@ -61,8 +66,13 @@ public:
   
   void MulitpleDP(float factor);
   
-  void ADDP();
+  void AdjustParams();
   
+  void SetAdjustIndex(int index) ;
+  
+  bool  DPThreshold(float total);
+  
+  int CheckOperations() ;
 };
 
 #endif /* PID_H */
