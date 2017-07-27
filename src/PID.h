@@ -28,14 +28,15 @@ public:
    int msgcount;
    
    bool first_run;
+   bool twiddle;
    double best_error;
    
    std::stack<Operations> stack_operations;
    
    // which parameter to adjust
    // 0  dp_p;
-   // 1  dp_i;
-   // 2  dp_d;
+   // 1  dp_d;
+   // 2  dp_i;
    int adjust_index;
    double dp[3];
    
@@ -86,6 +87,12 @@ public:
   void UpdateSpeed(double speed) ;
   
   void Twiddle(int nStep);
+  
+  void DisplayPerformanceComparison(int stage);
+  
+  void DisplayAdjustmentArray();
+  
+  void DisplayCurrentBestParameter();
 };
 
 #endif /* PID_H */
