@@ -28,7 +28,7 @@ public:
    int msgcount;
    
    bool first_run;
-   float best_error;
+   double best_error;
    
    std::stack<Operations> stack_operations;
    
@@ -37,7 +37,16 @@ public:
    // 1  dp_i;
    // 2  dp_d;
    int adjust_index;
-   float dp[3];
+   double dp[3];
+   
+   double best_kp;
+   double best_kd;
+   
+   int  max_speed;
+   int nummaxspeed;
+   
+   int best_max_speed;
+   int best_nummaxspeed;
    
   /*
   * Constructor
@@ -64,15 +73,19 @@ public:
   */
   double TotalError();
   
-  void MulitpleDP(float factor);
+  void MulitpleDP(double factor);
   
   void AdjustParams();
   
   void SetAdjustIndex(int index) ;
   
-  bool  DPThreshold(float total);
-  
   int CheckOperations() ;
+  
+  bool Better();
+  
+  void UpdateSpeed(double speed) ;
+  
+  void Twiddle(int nStep);
 };
 
 #endif /* PID_H */
