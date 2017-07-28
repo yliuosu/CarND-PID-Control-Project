@@ -32,6 +32,7 @@ public:
    // flag to show whether it is the first run
    bool first_run;
    bool twiddle;
+   int max_twiddle_steps;
    
    // record the smallest sum square cte 
    // of multiple runs
@@ -99,7 +100,7 @@ public:
   
   void UpdateSpeed(double speed) ;
   
-  void Twiddle(int nStep);
+  void Twiddle( bool & reset);
   
   void SetTwiddleFlag(bool flag);
   
@@ -110,6 +111,8 @@ public:
   void DisplayAdjustmentArray();
   
   void DisplayCurrentBestParameter();
+  
+  void SetMaxTwiddleSteps(int steps) ;
 };
 
 #endif /* PID_H */

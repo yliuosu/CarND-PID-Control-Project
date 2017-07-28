@@ -36,7 +36,18 @@ int main()
   PID pid;
   // TODO: Initialize the pid variable.
   
+  // Solution 1:  cost function is to  minimize the sum squared cte
+  //pid.Init(2.22828, 0.0,  8.45303);
+  //pid.SetTwiddleFlag(false);
+  
+  // Solution 2: cost function is to adchieve higher spped  and stay that high speed as long as possible
+  //pid.Init(0.1, 0.0, 0.623038);
+  //pid.SetTwiddleFlag(false);
+  
+  //  Solution 3:  initialize the parameters and set the twiddle flag to true to get better parameters
   pid.Init(0.1,0.0,3.0);
+  pid.SetTwiddleFlag(true);
+  pid.SetMaxTwiddleSteps(550);
   
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -49,151 +60,43 @@ int main()
         auto j = json::parse(s);
         std::string event = j[0].get<std::string>();
         if (event == "telemetry") {
-          // j[1] is the data JSON object
-          double cte = std::stod(j[1]["cte"].get<std::string>());
-          double speed = std::stod(j[1]["speed"].get<std::string>());
-          double angle = std::stod(j[1]["steering_angle"].get<std::string>());
-          double steer_value;
-          /*
-          * TODO: Calcuate steering value here, remember the steering value is
-          * [-1, 1].
-          * NOTE: Feel free to play around with the throttle and speed. Maybe use
-          * another PID controller to control the speed!
-          */
-		  pid.UpdateError(cte);
-		  pid.UpdateSpeed(speed);
+			// j[1] is the data JSON object
+			double cte = std::stod(j[1]["cte"].get<std::string>());
+			double speed = std::stod(j[1]["speed"].get<std::string>());
+			double angle = std::stod(j[1]["steering_angle"].get<std::string>());
+			double steer_value;
+			/*
+			* TODO: Calcuate steering value here, remember the steering value is
+			* [-1, 1].
+			* NOTE: Feel free to play around with the throttle and speed. Maybe use
+			* another PID controller to control the speed!
+			*/
+			pid.UpdateError(cte);
+			pid.UpdateSpeed(speed);
 		  
-		  steer_value = -1.0 * (pid.p_error * pid.Kp  +  pid.i_error * pid.Ki + pid.d_error * pid.Kd);
+			//PID Control
+			steer_value = -1.0 * (pid.p_error * pid.Kp  +  pid.i_error * pid.Ki + pid.d_error * pid.Kd);
           
-          // DEBUG	
-          /*std::cout << "CTE: " << cte << " Steering Value: " << steer_value << " Angle: " <<
+          
+			/*std::cout << "CTE: " << cte << " Steering Value: " << steer_value << " Angle: " <<
 							angle  << "Speed:"<< speed << "Count:" << pid.msgcount <<std::endl;*/
-		 if (pid.msgcount %  50 == 0 ) {
-			std::cout << "CTE: " << cte << ",   Count:" << pid.msgcount << " [ " << pid.Kp << ", " << pid.Kd << ", " << pid.Ki << " ] "<< pid. TotalError()   <<std::endl;
-		 }
-		 
-          // calculate 550 steps of total errors to twiddle the parameters		  
-		   if (pid.msgcount >= 550 ) {
-			   
-			   if(pid.first_run == true) {
-				   
-				   //std::cout << "First run Best error: ***************" << pid.best_error  << " ****************" << pid.TotalError() << std::endl;
-				   //std::cout << "First run Best error: ***************" << pid.best_error  << " ****************" << pid.TotalError() << std::endl;
-				   
-				   std::cout << "Best speed: ***************" << pid.best_max_speed  << "----" << pid.max_speed << " ****************" << pid.best_nummaxspeed << std::endl;
-				   
-				   //pid.best_error = pid.TotalError();
-				   pid.best_max_speed = pid.max_speed;
-				   pid.best_nummaxspeed = pid.nummaxspeed;
-				   
-				   pid.first_run = false;
-				   //adjust the first parameters
-				   pid.SetAdjustIndex(0);
-				   pid.stack_operations.push(First_AddDP);
-				   pid.AdjustParams();
-				   
-				   
-				   
-				   std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
-	
-			   } else {
-				   
-				   // the first adjustment is good then adjust the next parameter
-				   //if(pid. TotalError() < pid.best_error && pid.stack_operations.top() == First_AddDP ) {
-					 if(pid. Better() == true && pid.stack_operations.top() == First_AddDP ) {
-					   
-					   //std::cout << "First_AddDP is good Best error: ***************" << pid.best_error  << " ****************" << pid.TotalError() << std::endl;
-					   std::cout << "1, Best speed: ***************" << pid.best_max_speed  << "----" << pid.max_speed << " ****************" << pid.best_nummaxspeed << "----" << pid.nummaxspeed  << std::endl;
-						pid.MulitpleDP(1.1);
-						
-						//pid.best_error = pid. TotalError();
-						pid.best_max_speed = pid.max_speed;
-						pid.best_nummaxspeed = pid.nummaxspeed;
-				   
-						pid.best_kp = pid.Kp ;
-						pid.best_kd = pid.Kd;
-						std::cout << "Best KP:  " << pid.best_kp << ", Best Kd: " << pid.best_kd << std::endl;
-						std::cout << "Best speed: ***************" << pid.best_max_speed  << " ****************" << pid.best_nummaxspeed << std::endl;
-						
-						// select next parameter
-						//pid.adjust_index = (pid.adjust_index + 1) % 3;
-						pid.adjust_index = (pid.adjust_index + 1) % 2;
-						// adjust it parameter
-						pid.AdjustParams();
-						
-						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
-						
-					//} else if(pid.best_error < pid. TotalError() && pid.stack_operations.top() == First_AddDP ) {
-					 } else if(pid. Better() == false && pid.stack_operations.top() == First_AddDP ) {
-						
-						//std::cout << "First_AddDP is not good  Best error: ***************" << pid.best_error  << " ****************" << pid.TotalError() << std::endl;
-						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
-						std::cout << "2, Best speed: ***************" << pid.best_max_speed  << "----" << pid.max_speed << " ****************" << pid.best_nummaxspeed << "----" << pid.nummaxspeed  << std::endl;
-						// the first adjustment is not good, keep tuning the parameter
-						// remove the previous operation from the stack
-						pid.stack_operations.pop();
-						pid.stack_operations.push(Second_Minus2DP);
-						pid.AdjustParams();
-						
-						
-						
-					//} else if(pid. TotalError() < pid.best_error  && pid.stack_operations.top() == Second_Minus2DP ) {
-					  } else if(pid. Better() == true  && pid.stack_operations.top() == Second_Minus2DP ) {
-						// the second adjustment is good then adjust the next parameter
-						// remove the previous operation from the stack
-						
-						//std::cout << "Second_Minus2DP is good  Best error: ***************" << pid.best_error  << " ****************" << pid.TotalError()  << " ****************" <<std::endl;
-						std::cout << "3, Best speed: ***************" << pid.best_max_speed  << "----" << pid.max_speed << " ****************" << pid.best_nummaxspeed << "----" << pid.nummaxspeed  << std::endl;
-						
-						pid.MulitpleDP(1.1);
-						//pid.best_error = pid. TotalError();	
-						
-						pid.best_max_speed = pid.max_speed;
-						pid.best_nummaxspeed = pid.nummaxspeed;
-						
-						pid.best_kp = pid.Kp ;
-						pid.best_kd = pid.Kd;
-						std::cout << "Best KP:  " << pid.best_kp << ", Best Kd: " << pid.best_kd << std::endl;
-						
-						// select next parameter
-						pid.adjust_index = (pid.adjust_index + 1) % 2;
-						pid.stack_operations.pop();
-						pid.stack_operations.push(First_AddDP);
-						// adjust it parameter
-						pid.AdjustParams();
-						
-						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
-					//} else if(pid.best_error < pid. TotalError() && pid.stack_operations.top() == Second_Minus2DP ) {
-					} else if(pid. Better() == false && pid.stack_operations.top() == Second_Minus2DP ) {
-						
-						//std::cout << "Second_Minus2DP is not good  Best error: ***************" << pid.best_error  << " ****************" << pid.TotalError()  <<  " ****************" <<std::endl;
-						std::cout << "4, Best speed: ***************" << pid.best_max_speed  << "----" << pid.max_speed << " ****************" << pid.best_nummaxspeed << "----" << pid.nummaxspeed  << std::endl;
-						// the second adjustment is not good then reduce the range of the adjustment
-						pid.stack_operations.pop();
-						pid.stack_operations.push(Third_AddDP);
-						pid.AdjustParams();
-						pid.MulitpleDP(0.9);
-						
-						// select next parameter
-						pid.adjust_index = (pid.adjust_index + 1) % 2;
-						pid.stack_operations.pop();
-						pid.stack_operations.push(First_AddDP);
-						// adjust it parameter
-						pid.AdjustParams();
-						
-						std::cout << "DPS:  [ " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]  << " ] "<< std::endl;
-						
-						
-						
-					}
-			   }
-			   std::cout << "t***************reset********************" <<std::endl;; 
-				
-			    pid.msgcount =0;
-				// reset the program to start a new round
-			   std::string msg = "42[\"reset\",{}]";
-				ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);  
-		   }
+			
+			// every 50 time step display information once
+			if (pid.msgcount %  50 == 0 ) {
+				std::cout << "CTE: " << cte << ",   Count:" << pid.msgcount << " [ " << pid.Kp << ", " << pid.Kd << ", " << pid.Ki << " ], Current Speed:  "<< speed  <<std::endl;
+			}
+			
+			if(pid.GetTwiddleFlag()== true) {
+				bool reset = false;
+				pid.Twiddle(reset);
+				if(reset) {
+					std::cout << "t***************reset********************" <<std::endl;; 
+					// reset the program to start a new round
+					std::string msg = "42[\"reset\",{}]";
+					ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);  
+				}
+			}
+		  
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;

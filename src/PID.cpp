@@ -34,6 +34,8 @@ PID::PID() {
 	best_kp = 0;
 	best_kd = 0;
 	
+	twiddle = false;
+	
 }
 
 PID::~PID() {}
@@ -55,6 +57,8 @@ void PID::Init(double Kp, double Ki, double Kd) {
 	best_max_speed = 0.0;
 	best_nummaxspeed = 1;
 	
+	max_twiddle_steps = 1;
+	
 }
 
 void PID::UpdateError(double cte) {
@@ -65,6 +69,7 @@ void PID::UpdateError(double cte) {
 	prev_cte = cte;
 	total_cte += cte * cte;
 	msgcount++;
+	
 }
 
 void PID::UpdateSpeed(double speed) {
@@ -80,22 +85,11 @@ void PID::UpdateSpeed(double speed) {
 
 bool PID::Better(){
 	if (best_max_speed < max_speed) {
-		
-		std::cout << "Best speed: ***************" << best_max_speed  << "---- max: " << max_speed << std::endl;
 		return true;
 	} else if(best_max_speed == max_speed && best_nummaxspeed< nummaxspeed  ) {
-		
-		std::cout << "Best speed: ***************" << best_max_speed  << "---- max: " << max_speed << std::endl;
-		std::cout << "Best speed Num: ***************" << best_nummaxspeed  << "---- max num: " << nummaxspeed << std::endl;
-		
 		return true;
 	}
-	
 	return false;
-}
-
-double PID::TotalError() {
-	return  total_cte;
 }
 
 void PID::SetAdjustIndex(int index) {
@@ -121,6 +115,8 @@ int PID::CheckOperations() {
 		return 1;
 	}
 	
+	return 0;
+	
 }
 
 void PID::AdjustParams() {
@@ -144,24 +140,37 @@ void PID::AdjustParams() {
 	
 }
 
-void DisplayPerformanceComparison(int stage){
+void PID::DisplayPerformanceComparison(int stage){
 	//std::cout << "Best error:  " << best_error  << ", Current error: " << TotalError() << std::endl;
-	std::cout << stage << " Best Max Speed:  " << best_max_speed  << ",  Current Max Speed:  " << max_speed  << best_nummaxspeed << std::endl;
-	std::cout << stage<< "Best Max Speed Point Number:  " << best_nummaxspeed  << ",  Current Max Speed Number:  " << nummaxspeed  << std::endl;
+	std::cout << stage << " Best Max Speed:  " << best_max_speed  << ",  Current Max Speed:  " << max_speed  << std::endl;
+	std::cout << stage<< "  Best Max Speed Point Number:  " << best_nummaxspeed  << ",  Current Max Speed Number:  " << nummaxspeed  << std::endl;
 }
 
-void DisplayAdjustmentArray() {
+void PID::DisplayAdjustmentArray() {
 	 // display the adjustment array information
 	std::cout << "DPS:  [ " << dp[0] << ", " << dp[1] << ", " << dp[2]  << " ] "<< std::endl;
 }
 
-void DisplayCurrentBestParameter(){
-	std::cout << "Best KP:  " <<.best_kp << ", Best Kd: " <<.best_kd << ", Best Ki" std::endl;
+void PID::DisplayCurrentBestParameter(){
+	std::cout << "Best KP:  " <<best_kp << ", Best Kd: " <<best_kd << ", Best Ki" <<  Ki << std::endl;
 }
 
-void PID::Twiddle(int nStep){
+void PID::SetTwiddleFlag(bool flag){
+	twiddle = flag;
+}
+
+bool  PID::GetTwiddleFlag(){
+	return twiddle;
+}
+
+void PID::SetMaxTwiddleSteps(int steps) {
 	
-	if (msgcount >= nStep ) {
+	max_twiddle_steps = steps;
+}
+
+void PID::Twiddle( bool & reset){
+	
+	if (msgcount >= max_twiddle_steps ) {
 		
 			   if(first_run == true) {
 				  
@@ -254,24 +263,25 @@ void PID::Twiddle(int nStep){
 						DisplayPerformanceComparison(4);
 						
 						// the second adjustment is not good then reduce the range of the adjustment
-						pid.stack_operations.pop();
-						pid.stack_operations.push(Third_AddDP);
-						pid.AdjustParams();
+						stack_operations.pop();
+						stack_operations.push(Third_AddDP);
+						AdjustParams();
 						
 						// change the range of the adjustment array dp[i]
-						pid.MulitpleDP(0.9);
+						MulitpleDP(0.9);
 						
 						// switch next parameter
-						pid.adjust_index = (pid.adjust_index + 1) % 2;
-						pid.stack_operations.pop();
-						pid.stack_operations.push(First_AddDP);
+						adjust_index = (adjust_index + 1) % 2;
+						stack_operations.pop();
+						stack_operations.push(First_AddDP);
 						// adjust it parameter
-						pid.AdjustParams();
+						AdjustParams();
 						
 						// display the adjustment array information
 						 DisplayAdjustmentArray();
 					}
 			   }
-	
+			   msgcount =0;
+			   reset = true;
+	}
 }
-
